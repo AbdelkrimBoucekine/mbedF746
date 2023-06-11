@@ -7,9 +7,8 @@
 
 ThreadLvgl threadLvgl(30);
 AnalogIn turbiditySensor(A0); // Capteur de turbidité connecté à la broche A0
-lv_obj_t *label;
-lv_disp_t* disp;
-
+lv_obj_t *chart;
+lv_chart_series_t *ser1;
 
 void update_turbidity_value() {
     while (1) {
@@ -19,45 +18,45 @@ void update_turbidity_value() {
         // Convertir la valeur en plage de 0 à 100
         int turbidity = turbidityValue * 100;
 
-        char buf[10];
-        snprintf(buf, sizeof(buf), "%d", turbidity);
+        // Ajouter la valeur au graphique
+        lv_chart_set_next_value(chart, ser1, turbidity);
 
-        lv_label_set_text(label, buf);
-
-        ThisThread::sleep_for(100ms); // Attendre un court instant avant la prochaine lecture
+        ThisThread::sleep_for(500ms); // Attendre un court instant avant la prochaine lecture
     }
 }
 
 int main() {
     threadLvgl.lock();
 
+    // Initialiser LVGL
     lv_init();
 
-    // Initialiser le pilote d'affichage
-    // Ici, vous devez ajouter le code spécifique à votre pilote d'affichage
-    // Exemple : lvgl_driver_init();
+    static lv_style_t style;
+    lv_style_init(&style);
+    lv_style_set_bg_color(&style, lv_palette_main(LV_PALETTE_GREY));
 
-    lv_disp_drv_t disp_drv;
-    lv_disp_drv_init(&disp_drv);
+    lv_obj_t *obj = lv_obj_create(lv_scr_act());
+    lv_obj_add_style(obj, &style, 0);
 
-    // Ici, vous pouvez configurer des paramètres spécifiques à l'affichage, tels que la résolution, l'orientation, etc.
-    // Exemple : disp_drv.hor_res = ...
+    lv_obj_set_size(obj, lv_disp_get_hor_res(NULL), lv_disp_get_ver_res(NULL)); 
+
+    // Créer un graphique
+    chart = lv_chart_create(lv_scr_act());
+    lv_obj_set_size(chart, 200, 150);
+    lv_obj_align(chart, LV_ALIGN_CENTER, 0, 0);
+    lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
+
+    // Ajouter une série de données au graphique
+    ser1 = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_RED), LV_CHART_AXIS_PRIMARY_Y);
+
+    // Ajouter les axes X et Y avec des numéros
+    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_X, 10, 5, 6, 5, true, 30);
+    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 10, 5, 6, 5, true, 30);
     
-    lv_disp_drv_register(&disp_drv);
-
-lv_theme_t *th = lv_theme_default_init(disp, lv_palette_main(LV_PALETTE_BLUE), lv_palette_main(LV_PALETTE_CYAN), false, &lv_font_montserrat_14);
-lv_disp_set_theme(disp, th); /*Assign the theme to the display*/
-
-    lv_obj_t *scr = lv_obj_create(NULL);
-    lv_scr_load(scr);
-
-    lv_obj_t *label = lv_label_create(scr);
-    lv_label_set_text(label, "Valeur du capteur :");
-    lv_obj_align(label, LV_ALIGN_TOP_LEFT, 10, 10);
-
-    lv_obj_t *value_label = lv_label_create(scr);
-    lv_label_set_text(value_label, "");
-    lv_obj_align(value_label, LV_ALIGN_TOP_LEFT, 10, 40);
+ 
+    /* Activer le scrolling dans le graphique
+    lv_chart_set_drag(chart, true);
+    lv_chart_set_drag_dir(chart, LV_DIR_HOR | LV_DIR_VER); */
 
     threadLvgl.unlock();
 
@@ -79,11 +78,11 @@ lv_disp_set_theme(disp, th); /*Assign the theme to the display*/
         } else if (turbidity > 25 && turbidity <= 50) {
             printf("%d L'eau est sale\n", turbidity);
         } else if (turbidity > 50 && turbidity <= 75) {
-            printf("%d L'eau est trouble\n", turbidity);
+            printf("%d L'eau est légèrement sale\n", turbidity);
         } else if (turbidity > 75 && turbidity <= 100) {
             printf("%d L'eau est propre\n", turbidity);
         }
 
-        ThisThread::sleep_for(100ms); //Attendre un court instant avant la prochaine lecture
+        ThisThread::sleep_for(2s); // Attendre quelques secondes avant la prochaine lecture
     }
 }
