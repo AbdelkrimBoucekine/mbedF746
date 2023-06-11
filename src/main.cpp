@@ -126,6 +126,33 @@ int main() {
     Thread updateThread;
     updateThread.start(update_turbidity_value);
 
+    // Créer un fragment vide pour afficher une page noire au lancement
+    lv_obj_t *fragment = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(fragment, lv_disp_get_hor_res(NULL), lv_disp_get_ver_res(NULL));
+    lv_obj_set_style_bg_opa(fragment, LV_OPA_COVER, 0);
+
+    // Créer le label "Bienvenue"
+    lv_obj_t *label_welcome = lv_label_create(fragment);
+    lv_label_set_text(label_welcome, "Bienvenue");
+
+    // Créer un style pour la police du texte
+    static lv_style_t style_welcome;
+    lv_style_init(&style_welcome);
+    lv_obj_add_style(label_welcome, &style_welcome, 0);
+
+    lv_style_set_text_font(&style_welcome, &lv_font_montserrat_48);  /*Set a larger font*/
+
+
+    lv_obj_align(label_welcome, LV_ALIGN_CENTER, 0, 0);
+
+
+
+    // Afficher la page noire pendant 5 secondes
+    ThisThread::sleep_for(5s);
+
+    // Supprimer le fragment vide
+    lv_obj_del(fragment);
+
     while (1) {
         ThisThread::sleep_for(2s); // Attendre quelques secondes avant la prochaine lecture
     }
