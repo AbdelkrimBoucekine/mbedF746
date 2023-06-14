@@ -1,0 +1,13 @@
+  // Créer l'objet image
+    LV_IMG_DECLARE(flappy);
+    lv_obj_t * logo = lv_img_create(lv_scr_act());
+    lv_img_set_src(logo, &flappy);
+    lv_obj_align(logo, LV_ALIGN_CENTER, 0, -20);
+
+
+                // Changer la couleur de la LED en fonction du niveau de turbidité
+            if (turbidity < 50) {
+                lv_led_set_color(led_turbidity, lv_palette_main(LV_PALETTE_RED));
+            } else {
+                lv_led_set_color(led_turbidity, lv_palette_main(LV_PALETTE_GREEN));
+            }
