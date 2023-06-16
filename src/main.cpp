@@ -16,14 +16,18 @@ lv_obj_t *bar; // Nouvel objet pour la barre
 lv_obj_t *led1;
 lv_obj_t *led2;
 
+
 void update_turbidity_value() {
     while (1) {
         if (!isPaused) {
             // Lire la valeur du capteur de turbidité
             float turbidityValue = turbiditySensor.read();
 
+            // Inverser la valeur en soustrayant la valeur lue de 1
+            float invertedValue = 1 - turbidityValue;
+
             // Convertir la valeur en plage de 0 à 100
-            int turbidity = turbidityValue * 100;
+            int turbidity = invertedValue * 100;
 
             // Ajouter la valeur au graphique
             lv_chart_set_next_value(chart, ser1, turbidity);
@@ -36,13 +40,13 @@ void update_turbidity_value() {
             // Mettre à jour l'état en fonction de la valeur du capteur
             const char *state;
             if (turbidity >= 0 && turbidity <= 25) {
-                state = "L'eau est très sale";
+                state = "L'eau est propre";
             } else if (turbidity > 25 && turbidity <= 50) {
-                state = "L'eau est sale";
+                state = "L'eau est légèrement propre";
             } else if (turbidity > 50 && turbidity <= 75) {
                 state = "L'eau est légèrement sale";
             } else if (turbidity > 75 && turbidity <= 100) {
-                state = "L'eau est propre";
+                state = "L'eau est très sale";
             } else {
                 state = "État inconnu";
             }
@@ -54,18 +58,17 @@ void update_turbidity_value() {
 
             // Allumer ou éteindre la LED2 en fonction de la valeur de turbidité
             if (turbidity > 50) {
-                lv_led_on(led2);
-            } else {
-                lv_led_off(led2);
-            }
-
-            // Allumer ou éteindre la LED1 en fonction de la valeur de turbidité
-            if (turbidity < 50) {
                 lv_led_on(led1);
             } else {
                 lv_led_off(led1);
             }
 
+            // Allumer ou éteindre la LED1 en fonction de la valeur de turbidité
+            if (turbidity < 50) {
+                lv_led_on(led2);
+            } else {
+                lv_led_off(led2);
+            }
         }
         ThisThread::sleep_for(500ms); // Attendre un court instant avant la prochaine lecture
     }
@@ -88,14 +91,13 @@ void toggle_leds() {
     lv_led_toggle(led2);
 }
 
-
 int main() {
     threadLvgl.lock();
 
     // Initialiser LVGL
     lv_init();
 
-    static lv_style_t style;
+    static lv_style_t style, style_indic;
     lv_style_init(&style);
     lv_style_set_bg_color(&style, lv_palette_main(LV_PALETTE_BLUE_GREY));
 
@@ -119,7 +121,7 @@ int main() {
     // Créer le bouton Pause
     lv_obj_t *btn_pause = lv_btn_create(lv_scr_act());
     lv_obj_set_size(btn_pause, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-    lv_obj_align(btn_pause, LV_ALIGN_LEFT_MID, 0, 50);
+    lv_obj_align(btn_pause, LV_ALIGN_BOTTOM_LEFT, 0, -5);
     lv_obj_add_event_cb(btn_pause, btn_pause_event_cb, LV_EVENT_CLICKED, NULL);
 
     // Créer le label pour le bouton Pause
@@ -129,7 +131,7 @@ int main() {
     // Créer le bouton Relancer
     lv_obj_t *btn_play = lv_btn_create(lv_scr_act());
     lv_obj_set_size(btn_play, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-    lv_obj_align(btn_play, LV_ALIGN_LEFT_MID, 0, -50);
+    lv_obj_align(btn_play, LV_ALIGN_BOTTOM_LEFT, 0, -50);
     lv_obj_add_event_cb(btn_play, btn_play_event_cb, LV_EVENT_CLICKED, NULL);
 
     // Créer le label pour le bouton Relancer
@@ -153,10 +155,16 @@ int main() {
 
     // Créer la barre
     bar = lv_bar_create(lv_scr_act());
+    lv_obj_add_style(bar, &style_indic, LV_PART_INDICATOR);
     lv_obj_set_size(bar, 20, 200);
     lv_obj_center(bar);
     lv_bar_set_range(bar, 0, 100); // Définir la plage de la barre
     lv_obj_align(bar, LV_ALIGN_CENTER, 115, 0);
+
+    lv_style_set_bg_opa(&style_indic, LV_OPA_COVER);
+    lv_style_set_bg_color(&style_indic, lv_palette_main(LV_PALETTE_RED));
+    lv_style_set_bg_grad_color(&style_indic, lv_palette_main(LV_PALETTE_BLUE));
+    lv_style_set_bg_grad_dir(&style_indic, LV_GRAD_DIR_VER);
 
     // Créer les LEDs
     led1 = lv_led_create(lv_scr_act());
@@ -164,12 +172,10 @@ int main() {
     lv_led_off(led1);
     lv_led_set_color(led1, lv_palette_main(LV_PALETTE_RED));
 
-
     led2 = lv_led_create(lv_scr_act());
     lv_obj_align(led2, LV_ALIGN_BOTTOM_RIGHT, -50, -10);
     lv_led_off(led2);
     lv_led_set_color(led2, lv_palette_main(LV_PALETTE_BLUE));
-
 
     threadLvgl.unlock();
 
@@ -177,7 +183,7 @@ int main() {
     Thread updateThread;
     updateThread.start(update_turbidity_value);
 
-     // Créer un fragment vide pour afficher une page noire au lancement
+    // Créer un fragment vide pour afficher une page noire au lancement
     lv_obj_t *fragment = lv_obj_create(lv_scr_act());
     lv_obj_set_size(fragment, lv_disp_get_hor_res(NULL), lv_disp_get_ver_res(NULL));
     lv_obj_set_style_bg_opa(fragment, LV_OPA_COVER, 0);
@@ -199,7 +205,7 @@ int main() {
     ThisThread::sleep_for(5s);
 
     // Supprimer le fragment vide
-    lv_obj_del(fragment);   
+    lv_obj_del(fragment);
 
     // Créer une boucle d'événements LVGL
     while (1) {
