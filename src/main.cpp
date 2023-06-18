@@ -111,17 +111,16 @@ void reset_chart() {
 // Définition de la fonction event_cb
 static void event_cb(lv_event_t *e) {
     // Traitement des événements du message box
-    lv_obj_t * mbox1 = lv_event_get_current_target(e);
-    LV_LOG_USER("Button %s clicked", lv_msgbox_get_active_btn_text(obj));
 }
 
 // Définir la fonction lv_example_msgbox_1()
 void lv_example_msgbox_1(void) {
     // ...
-    static const char * btns[] = {"Apply", "Close", ""};
-    lv_obj_t * mbox1 = lv_msgbox_create(NULL, "Attention", "This is a message box with two buttons.", btns, true);
+    static const char * btns[] = {""};
+    lv_obj_t * mbox1 = lv_msgbox_create(NULL, "Bienvenue dans le dispositif d'analyse de turbidite", "Quitter cette page pour commencer.", btns, true);
     lv_obj_add_event_cb(mbox1, event_cb, LV_EVENT_VALUE_CHANGED, NULL);
     lv_obj_center(mbox1);
+    lv_obj_set_size(mbox1, lv_disp_get_hor_res(NULL), lv_disp_get_ver_res(NULL));
 }
 
 int main() {
