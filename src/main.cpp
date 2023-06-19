@@ -2,12 +2,8 @@
 #include "lvgl.h"
 #include <threadLvgl.h>
 #include "AnalogIn.h"
-#include <cstdio>
 #include "DigitalOut.h"
 #include <ctime>
-#include <cstring>
-
-
 
 ThreadLvgl threadLvgl(30);
 AnalogIn turbiditySensor(A0); // Capteur de turbidité connecté à la broche A0
@@ -19,19 +15,20 @@ lv_obj_t *label_state;
 lv_obj_t *bar; // Nouvel objet pour la barre
 lv_obj_t *led1;
 lv_obj_t *led2;
-lv_obj_t *mbox; //Boîte de dialogue
+Ticker ticker;
 
 std::string get_current_time() {
-    // Obtenez l'heure actuelle en utilisant time() et localtime()
     std::time_t now = std::time(nullptr);
     std::tm* local_time = std::localtime(&now);
 
-    // Créez une chaîne de caractères au format HH:MM:SS
-    char time_str[9];  // 8 caractères pour HH:MM:SS + 1 caractère nul de fin
+    char time_str[9];
     std::strftime(time_str, sizeof(time_str), "%H:%M:%S", local_time);
 
-    // Retournez la chaîne de caractères
     return std::string(time_str);
+}
+
+void update_time() {
+    // Mettre à jour le temps ici
 }
 
 void update_turbidity_value() {
@@ -64,9 +61,7 @@ void update_turbidity_value() {
                 state = "L'eau est legerement sale";
             } else if (turbidity > 75 && turbidity <= 100) {
                 state = "L'eau est tres sale";
-            } //else if (turbidity > 50) {
-                //show_turbidity_message();
-           // }
+            }
 
             lv_label_set_text(label_state, state);
 
@@ -115,12 +110,21 @@ static void event_cb(lv_event_t *e) {
 
 // Définir la fonction lv_example_msgbox_1()
 void lv_example_msgbox_1(void) {
+    // Créer un style personnalisé pour le message box
+    static lv_style_t style_msgbox;
+    lv_style_init(&style_msgbox);
+    lv_style_set_bg_color(&style_msgbox, lv_color_make(0x00, 0x80, 0xC0)); // Couleur de fond
+    lv_style_set_text_color(&style_msgbox, lv_color_make(0xFF, 0xFF, 0xFF)); // Couleur du texte
+
     // ...
     static const char * btns[] = {""};
     lv_obj_t * mbox1 = lv_msgbox_create(NULL, "Bienvenue dans le dispositif d'analyse de turbidite", "Quitter cette page pour commencer.", btns, true);
     lv_obj_add_event_cb(mbox1, event_cb, LV_EVENT_VALUE_CHANGED, NULL);
     lv_obj_center(mbox1);
     lv_obj_set_size(mbox1, lv_disp_get_hor_res(NULL), lv_disp_get_ver_res(NULL));
+
+    // Appliquer le style personnalisé au message box
+    lv_obj_add_style(mbox1, &style_msgbox, 0);
 }
 
 int main() {
@@ -129,14 +133,18 @@ int main() {
     // Initialiser LVGL
     lv_init();
 
+    // Définition de deux styles pour les objets graphiques
     static lv_style_t style, style_indic;
     lv_style_init(&style);
-    lv_style_set_bg_color(&style, lv_palette_main(LV_PALETTE_BLUE_GREY));
+    lv_style_set_bg_color(&style, lv_palette_main(LV_PALETTE_BLUE_GREY)); // Définir la couleur de fond du style
 
-    lv_obj_t *obj = lv_obj_create(lv_scr_act());
-    lv_obj_add_style(obj, &style, 0);
+    // Création d'un objet graphique
+    lv_obj_t *obj = lv_obj_create(lv_scr_act()); // Créer un nouvel objet sur l'écran actuel
+    lv_obj_add_style(obj, &style, 0); // Ajouter le style défini au nouvel objet
 
+    // Définir la taille de l'objet en fonction de la résolution de l'écran
     lv_obj_set_size(obj, lv_disp_get_hor_res(NULL), lv_disp_get_ver_res(NULL));
+
 
     // Créer un graphique
     chart = lv_chart_create(lv_scr_act());
@@ -191,7 +199,7 @@ int main() {
     lv_obj_set_size(bar, 20, 200);
     lv_obj_center(bar);
     lv_bar_set_range(bar, 0, 100); // Définir la plage de la barre
-    lv_obj_align(bar, LV_ALIGN_CENTER, 130, 0);
+    lv_obj_align(bar, LV_ALIGN_CENTER, 150, 0);
 
     lv_style_set_bg_opa(&style_indic, LV_OPA_COVER);
     lv_style_set_bg_color(&style_indic, lv_palette_main(LV_PALETTE_RED));
@@ -209,14 +217,6 @@ int main() {
     lv_led_off(led2);
     lv_led_set_color(led2, lv_palette_main(LV_PALETTE_BLUE));
 
-    // Créer le texte pour afficher l'heure
-    lv_obj_t *label_time = lv_label_create(lv_scr_act());
-    lv_obj_align(label_time, LV_ALIGN_TOP_RIGHT, -10, 10);
-    lv_label_set_text(label_time, get_current_time().c_str());
-
-    // Appeler lv_example_msgbox_1() pour afficher la boîte de dialogue
-    lv_example_msgbox_1();
-
     lv_obj_t *btn_reset = lv_btn_create(lv_scr_act());
     lv_obj_set_size(btn_reset, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_align(btn_reset, LV_ALIGN_BOTTOM_LEFT, 10, -95);
@@ -224,16 +224,21 @@ int main() {
         if (e->code == LV_EVENT_CLICKED) {
             reset_chart(); // Utiliser la fonction reset_chart() pour réinitialiser le graphique
         }
-    }, LV_EVENT_CLICKED, NULL);
+    }, LV_EVENT_CLICKED, NULL);  
 
     lv_obj_t *label_reset = lv_label_create(btn_reset);
     lv_label_set_text(label_reset, "Reinitialiser");
 
-    threadLvgl.unlock();
+    threadLvgl.unlock();           
 
     printf("Démarrage du programme...\n");
     Thread updateThread;
     updateThread.start(update_turbidity_value);
+
+    // Créer le texte pour afficher l'heure
+    lv_obj_t *label_time = lv_label_create(lv_scr_act());
+    lv_obj_align(label_time, LV_ALIGN_TOP_RIGHT, -10, 10);
+    lv_label_set_text(label_time, get_current_time().c_str());  
 
     // Créer un fragment vide pour afficher une page noire au lancement
     lv_obj_t *fragment = lv_obj_create(lv_scr_act());
@@ -256,13 +261,21 @@ int main() {
     lv_obj_align(label_welcome, LV_ALIGN_CENTER, 0, 0);
 
     // Afficher le fragment pendant 3 secondes
-    ThisThread::sleep_for(500ms);
+    ThisThread::sleep_for(3000ms);
 
     // Supprimer le fragment après l'affichage
     lv_obj_del(fragment);
 
+    // Appeler lv_example_msgbox_1() pour afficher la boîte de dialogue
+    lv_example_msgbox_1();
+
+    // Créer une fonction de mise à jour récurrente toutes les secondes
+    ticker.attach(update_time, 1s);
+
     while (1) {
-        lv_task_handler();
-        ThisThread::sleep_for(5ms);
+        threadLvgl.lock();
+        lv_label_set_text(label_time, get_current_time().c_str());
+        threadLvgl.unlock();
+        ThisThread::sleep_for(100ms);
     }
 }
